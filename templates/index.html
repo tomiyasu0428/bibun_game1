@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微分ゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .game-container {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .score {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        input[type="text"] {
+            padding: 5px;
+            font-size: 1em;
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 15px;
+            font-size: 1em;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .message {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>微分ゲーム</h1>
+    <div class="game-container">
+        <div class="score">スコア: <span id="score">0</span> / 5</div>
+        <div id="question"></div>
+        <input type="text" id="answer" placeholder="答えを入力してください">
+        <button onclick="checkAnswer()" id="submit-button">回答する</button>
+        <div id="message" class="message"></div>
+        <div id="game-over" class="message" style="display: none;">
+            <h2>ゲーム終了！</h2>
+            <p>最終スコア: <span id="final-score">0</span> / 5</p>
+            <button onclick="restartGame()">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        let currentAnswer = '';
+        let score = 0;
+        let questionCount = 0;
+
+        function restartGame() {
+            score = 0;
+            questionCount = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('question').style.display = 'block';
+            document.getElementById('answer').style.display = 'block';
+            document.getElementById('submit-button').style.display = 'block';
+            getNewQuestion();
+        }
+
+        function getNewQuestion() {
+            fetch('/get_question')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('question').textContent = `この関数の微分を求めてください: ${data.question}`;
+                    currentAnswer = data.answer;
+                    document.getElementById('answer').value = '';
+                    document.getElementById('message').textContent = '';
+                });
+        }
+
+        function checkAnswer() {
+            const userAnswer = document.getElementById('answer').value;
+            
+            fetch('/check_answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    answer: userAnswer,
+                    correct_answer: currentAnswer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('message').textContent = data.message;
+                if (data.correct) {
+                    score += 1;
+                    document.getElementById('score').textContent = score;
+                }
+                questionCount += 1;
+                
+                if (questionCount >= 5) {
+                    // ゲーム終了
+                    document.getElementById('final-score').textContent = score;
+                    document.getElementById('game-over').style.display = 'block';
+                    document.getElementById('question').style.display = 'none';
+                    document.getElementById('answer').style.display = 'none';
+                    document.getElementById('submit-button').style.display = 'none';
+                } else {
+                    setTimeout(getNewQuestion, 1500);
+                }
+            });
+        }
+
+        // Enter キーで回答できるようにする
+        document.getElementById('answer').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        // 初期問題を取得
+        getNewQuestion();
+    </script>
+</body>
+</html>
